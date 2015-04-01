@@ -4,6 +4,10 @@
 import socket
 import select
 
+
+def login_user():
+    sock.recv
+
 def main():
     host = '127.0.0.1'
     port = 26668
