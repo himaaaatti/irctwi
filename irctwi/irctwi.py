@@ -2,13 +2,14 @@
 
 import socket
 import select
+import string
 
 
 class IrcTwi(object):
     """irc to twitter gateway server"""
 
     __DEFAULT_HOST = '127.0.0.1'
-    __DEFAULT_PORT = 26667
+    __DEFAULT_PORT = 26668
     buffer_size = 1024
     concurrent_connection_number = 5
 
@@ -31,16 +32,24 @@ class IrcTwi(object):
                 for sock in ready_to_read:
                     if sock is self.__server_sock:
                         connection, address = self.__server_sock.accept()
+
+                        self.__login(connection)
+
+                        self.test_message(connection)
+
                         self.__readfds.add(connection)
-
-
                     else:
-                        pass
-    #                      command = sock.recv(1024)
-    #                      print(command)
-    #                      if command.decode().split(' ')[0] == 'USER':
-    #                          message = bytes('001', 'utf-8')
-    #                          sock.send(message)
+                        message = string.split(sock.recv(1024))
+                        print(message)
+#                         if 0 == len(message):
+#                             sock.close()
+
+                        if 'PING' == message[0]:
+                            sock.send('PONG ' + message[1] + '\n')
+                            print('PONG')
+
+
+
         except KeyboardInterrupt:
             pass
         finally:
@@ -48,13 +57,41 @@ class IrcTwi(object):
                 sock.close()
 
 
-    def __login(selp):
+    def __login(self, connection):
         """receive USER and NICK command"""
-        message = self.__server_sock.recv(buffer_size)
+        buf = connection.recv(IrcTwi.buffer_size)
+        message = string.split(buf)
+        nick = message[1]
+        if message[0] != 'NICK':
+            connection.send('please NICK command\n')
+            self.__login(connection)
+
         print(message)
-        message = self.
+        buf = connection.recv(IrcTwi.buffer_size)
+        message = string.split(buf)
+        user = message[1]
+        if 'USER' != message[0]:
+            connection.send('please USER command\n')
+            self.__login(connection)
+
+        print(message)
+        # 001 RPL_WELCOME
+        connection.send(':irctwi 001 ' + nick + ' :Wellcome irc and twitter gateway server!\n')
+        # 002 RPL_YOURHOST
+        connection.send(':irctwi 002 ' + nick + ' :Your host is\n')
+#         connection.send(':irctwi 002 ' + nick + ':Your host is ' + server_name + 'running version ' + ver)
+        # 003 RPL_CREATED
+        connection.send(':irctwi 003 ' + nick + ' :This server was created\n')
+#         connection.send(':irctwi 003 ' + nick + ':This server was created ' + date)
+        # 004 RPL_MYINOF
+        connection.send(':irctwi 004 ' + nick + ' :server_name\n')
+#         connection.send(':irctwi 004 ' + nick + ':' + server_name + ' ' +)
 
 
+    def test_message(self, connection):
+        connection.send(':owner NJOIN #user_stream\n')
+#         connection.send(':owner PRIVMSG #userstrem :user stream start!!\n')
+#       :hima!~hima@localhost PRIVMSG #good :ok!
 
 if __name__ == '__main__':
     irctwi = IrcTwi()
