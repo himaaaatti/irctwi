@@ -49,6 +49,15 @@ class IrcTwi(object):
                             print('PONG')
 
 
+                        if 'LIST' == message[0]:
+                            self.__list_response(sock)
+                            print('LIST')
+
+                        if 'JOIN' == message[0]:
+                            self.__confirmation(sock, message)
+                            self.__topic_response(sock, message[1])
+                            self.__name_response(sock, message[1])
+
 
         except KeyboardInterrupt:
             pass
@@ -58,7 +67,14 @@ class IrcTwi(object):
 
 
     def __login(self, connection):
-        """receive USER and NICK command"""
+        """
+        receive USER and NICK command and replie 001 to 004.
+
+            001 RPL_WELCOME
+            002 RPL_YOURHOST
+            003 RPL_CREATED
+            004 RPL_MYINFO
+        """
         buf = connection.recv(IrcTwi.buffer_size)
         message = string.split(buf)
         nick = message[1]
@@ -87,11 +103,40 @@ class IrcTwi(object):
         connection.send(':irctwi 004 ' + nick + ' :server_name\n')
 #         connection.send(':irctwi 004 ' + nick + ':' + server_name + ' ' +)
 
+    def __confirmation(self, socket, message):
+        socket.send(':{0}!{1} {1}\n'.format('helo', 'localhost', ' '.join(message)))
+
+
+    def __list_response(self, socket):
+        """
+            322 RPL_LIST
+            323 RPL_LISTEND
+        """
+        socket.send(':irctwi 322 {0} #timeline 1 :user stream\n'.format('helo'))
+        socket.send(':irctwi 323 {0} :End of LIST\n'.format('helo'))
+
+    def __topic_response(self, socket, channel):
+        """
+            332 RPL_TOPIC
+        """
+        socket.send(':irctwi 332 {0} {1} :user stream\n'.format('helo', channel))
+        pass
+
+    def __name_response(self, socket, channel):
+        """
+            353 RPL_NAMREPLY
+            366 RPL_ENDOFNAMES
+        """
+        socket.send(':irctwi 353 {0} = {1} :@{2}\n'.format('helo', channel, 'helo'))
+        socket.send(':irctwi 366 {0} {1} :End of NAMES list\n'.format('halo', channel))
+
 
     def test_message(self, connection):
-        connection.send(':owner NJOIN #user_stream\n')
+#         connection.send(':owner NJOIN #user_stream\n')
 #         connection.send(':owner PRIVMSG #userstrem :user stream start!!\n')
 #       :hima!~hima@localhost PRIVMSG #good :ok!
+        pass
+
 
 if __name__ == '__main__':
     irctwi = IrcTwi()
