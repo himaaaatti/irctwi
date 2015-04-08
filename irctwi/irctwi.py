@@ -41,8 +41,6 @@ class IrcTwi(object):
                     else:
                         message = string.split(sock.recv(1024))
                         print(message)
-#                         if 0 == len(message):
-#                             sock.close()
 
                         if 'PING' == message[0]:
                             sock.send('PONG ' + message[1] + '\n')
@@ -57,6 +55,11 @@ class IrcTwi(object):
                             self.__confirmation(sock, message)
                             self.__topic_response(sock, message[1])
                             self.__name_response(sock, message[1])
+
+                            sock.send(':us!~us@localhost PRIVMSG timeline :us\n')
+                            print(':us!~us@localhost PRIVMSG timeline :us\n')
+
+                        print(message)
 
 
         except KeyboardInterrupt:
@@ -81,10 +84,15 @@ class IrcTwi(object):
         if message[0] != 'NICK':
             connection.send('please NICK command\n')
             self.__login(connection)
+            return
 
         print(message)
-        buf = connection.recv(IrcTwi.buffer_size)
-        message = string.split(buf)
+        if len(message) > 3:
+            user = message[2]
+        else :
+            buf = connection.recv(IrcTwi.buffer_size)
+            message = string.split(buf)
+
         user = message[1]
         if 'USER' != message[0]:
             connection.send('please USER command\n')
@@ -95,7 +103,7 @@ class IrcTwi(object):
         connection.send(':irctwi 001 ' + nick + ' :Wellcome irc and twitter gateway server!\n')
         # 002 RPL_YOURHOST
         connection.send(':irctwi 002 ' + nick + ' :Your host is\n')
-#         connection.send(':irctwi 002 ' + nick + ':Your host is ' + server_name + 'running version ' + ver)
+#       connection.send(':irctwi 002 ' + nick + ':Your host is ' + server_name + 'running version ' + ver)
         # 003 RPL_CREATED
         connection.send(':irctwi 003 ' + nick + ' :This server was created\n')
 #         connection.send(':irctwi 003 ' + nick + ':This server was created ' + date)
@@ -104,7 +112,9 @@ class IrcTwi(object):
 #         connection.send(':irctwi 004 ' + nick + ':' + server_name + ' ' +)
 
     def __confirmation(self, socket, message):
-        socket.send(':{0}!{1} {1}\n'.format('helo', 'localhost', ' '.join(message)))
+#          print(':{0}!{1} {2}\n'.format('hima', 'localhost', ' '.join(message)))
+        print(':{0}!{0}@{1} {2} :{3}\n'.format('hima', 'localhost', message[0], message[1]))
+        socket.send(':{0}!{0}@{1} {2} :#{3}\n'.format('hima', 'localhost', message[0], message[1]))
 
 
     def __list_response(self, socket):
@@ -112,30 +122,28 @@ class IrcTwi(object):
             322 RPL_LIST
             323 RPL_LISTEND
         """
-        socket.send(':irctwi 322 {0} #timeline 1 :user stream\n'.format('helo'))
-        socket.send(':irctwi 323 {0} :End of LIST\n'.format('helo'))
+        socket.send(':irctwi 322 {0} #timeline 1 :user stream\n'.format('hima'))
+        socket.send(':irctwi 323 {0} :End of LIST\n'.format('hima'))
 
     def __topic_response(self, socket, channel):
         """
             332 RPL_TOPIC
         """
-        socket.send(':irctwi 332 {0} {1} :user stream\n'.format('helo', channel))
-        pass
+        socket.send(':irctwi 332 {0} {1} :user stream\n'.format('hima', channel))
+        print(':irctwi 332 {0} {1} :user stream\n'.format('hima', channel))
 
     def __name_response(self, socket, channel):
         """
             353 RPL_NAMREPLY
             366 RPL_ENDOFNAMES
         """
-        socket.send(':irctwi 353 {0} = {1} :@{2}\n'.format('helo', channel, 'helo'))
-        socket.send(':irctwi 366 {0} {1} :End of NAMES list\n'.format('halo', channel))
+        socket.send(':irctwi 353 {0} = {1} :{2} {3}\n'.format('hima', channel, 'us', 'hima'))
+        print(':irctwi 353 {0} = {1} :{2} {3}\n'.format('hima', channel, 'us', 'hima'))
+        socket.send(':irctwi 366 {0} {1} :End of NAMES list\n'.format('', channel))
+        print(':irctwi 366 {0} {1} :End of NAMES list\n'.format('hima', channel))
 
+        #:irc.example.net 366 hama #test :End of NAMES list
 
-    def test_message(self, connection):
-#         connection.send(':owner NJOIN #user_stream\n')
-#         connection.send(':owner PRIVMSG #userstrem :user stream start!!\n')
-#       :hima!~hima@localhost PRIVMSG #good :ok!
-        pass
 
 
 if __name__ == '__main__':
