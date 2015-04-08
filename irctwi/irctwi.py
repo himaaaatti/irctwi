@@ -8,12 +8,12 @@ import string
 class IrcTwi(object):
     """irc to twitter gateway server"""
 
-    __DEFAULT_HOST = '127.0.0.1'
-    __DEFAULT_PORT = 26668
+    DEFAULT_HOST = '127.0.0.1'
+    DEFAULT_PORT = 26668
     buffer_size = 1024
     concurrent_connection_number = 5
 
-    def __init__(self, host = __DEFAULT_HOST, port = __DEFAULT_PORT):
+    def __init__(self, host = DEFAULT_HOST, port = DEFAULT_PORT):
         self.__server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__readfds = set([self.__server_sock])
         self.__host = host
