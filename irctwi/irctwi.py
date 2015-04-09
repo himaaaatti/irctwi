@@ -66,7 +66,6 @@ class IrcTwi(object):
                             sock.send('PONG {host}\n'.format(host=message[1]))
                             print('PONG')
 
-
                         if 'LIST' == message[0]:
                             self.__list_response(sock)
                             print('LIST')
