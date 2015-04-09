@@ -33,6 +33,7 @@ class IrcTwi(object):
         self.__auth.set_access_token(
                 tokens['access_token'], tokens['access_token_secret'])
 
+        self.__api = tweepy.API(self.__auth)
 
     def run(self):
         """setup and main loop"""
@@ -52,9 +53,9 @@ class IrcTwi(object):
 
                         self.__readfds.add(connection)
 
-                        us_thread = UserStreamThread(connection, self.__auth)
-                        us_thread.start()
-                        self.__streams.append(us_thread)
+#                          us_thread = UserStreamThread(connection, self.__auth)
+#                          us_thread.start()
+#                          self.__streams.append(us_thread)
 
                     else:
                         message = string.split(sock.recv(1024))
@@ -74,6 +75,12 @@ class IrcTwi(object):
                             self.__topic_response(sock, message[1])
                             self.__name_response(sock, message[1])
 
+                        if 'PRIVMSG' == message[0]:
+                            if '#timeline' == message[1]:
+                                text = message[2:]
+                                print(' '.join(text)[1:])
+
+                                self.__api.update_status(' '.join(text)[1:])
 
         except KeyboardInterrupt:
             pass
@@ -199,6 +206,7 @@ class UserStreamListener(tweepy.StreamListener):
 
     def on_status(self, status):
 #          print(status.text)#.decode('utf-8')
+        #TODO: user can change print format
         title = '{name}({screen_name})'\
                 .format(screen_name=status.author.screen_name,\
                 name=status.author.name.encode('utf-8'))
