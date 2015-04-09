@@ -4,6 +4,7 @@
 import socket
 import select
 import string
+import ConfigParser
 
 import threading
 import tweepy
@@ -53,9 +54,9 @@ class IrcTwi(object):
 
                         self.__readfds.add(connection)
 
-#                          us_thread = UserStreamThread(connection, self.__auth)
-#                          us_thread.start()
-#                          self.__streams.append(us_thread)
+                        us_thread = UserStreamThread(connection, self.__auth)
+                        us_thread.start()
+                        self.__streams.append(us_thread)
 
                     else:
                         message = string.split(sock.recv(1024))
@@ -80,7 +81,7 @@ class IrcTwi(object):
                                 text = message[2:]
                                 print(' '.join(text)[1:])
 
-                                self.__api.update_status(' '.join(text)[1:])
+                                self.__api.update_status(status=' '.join(text)[1:])
 
         except KeyboardInterrupt:
             pass
@@ -88,8 +89,8 @@ class IrcTwi(object):
             UserStreamListener.CONTINURE_FLAG = False
             for stream in self.__streams:
                 stream.join()
-#              for sock in self.__readfds:
-#                  sock.close()
+            for sock in self.__readfds:
+                sock.close()
 
 
     def __login(self, connection):
@@ -110,8 +111,10 @@ class IrcTwi(object):
             raise NotImplementedError
 
 #          print(message)
+        user_index = 0
         if len(message) > 3:
-            user = message[2]
+            user = message[3]
+            user_index = 2
         else :
             buf = connection.recv(IrcTwi.buffer_size)
             message = string.split(buf)
@@ -119,7 +122,7 @@ class IrcTwi(object):
 
         self.__user_name = user
 
-        if 'USER' != message[0]:
+        if 'USER' != message[user_index]:
             raise NotImplementedError
 
         print(message)
@@ -192,7 +195,7 @@ class UserStreamThread(threading.Thread):
 
     def run(self):
         self.stream.userstream()
-        self.stream.close()
+#         self.stream.close()
 
 class UserStreamListener(tweepy.StreamListener):
     """ stream listener """
@@ -202,7 +205,6 @@ class UserStreamListener(tweepy.StreamListener):
     def __init__(self, socket):
         tweepy.StreamListener.__init__(self)
         self.__socket = socket
-
 
     def on_status(self, status):
 #          print(status.text)#.decode('utf-8')
@@ -235,10 +237,15 @@ class UserStreamListener(tweepy.StreamListener):
         self.__socket.close()
 
 if __name__ == '__main__':
+
+    config = ConfigParser.ConfigParser()
+    config.read('config')
     tokens = {}
-    tokens['consumer_key'] = 'HdTL890BiQTtiWulpyxmw'
-    tokens['consumer_secret'] = '73WAKBfPjHcXKglBWY9YuALxQVl6ZKq95ucctCyg9iQ'
-    tokens['access_token'] = '182691245-bfBUbk66c6UegewWW09xUVnpt2yPdQEtzDmfYwBq'
-    tokens['access_token_secret'] = 'SvFhjl1ziN8sAECUZLdxiSvkxIDMT5M1Ax9KX1a6w'
+    tokens['consumer_key'] = config.get('tokens', 'consumer_key')
+    tokens['consumer_secret'] = config.get('tokens', 'consumer_secret')
+    tokens['access_token'] = config.get('tokens', 'access_token')
+    tokens['access_token_secret'] = config.get('tokens', 'access_token_secret')
+    print(tokens)
+
     irctwi = IrcTwi(tokens=tokens)
     irctwi.run()

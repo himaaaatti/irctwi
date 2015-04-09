@@ -15,5 +15,5 @@ if __name__ == '__main__':
 
     api = tweepy.API(auth_handler=auth, api_root='/1.1')
 
-    api.update_status('hello')
+    api.update_status(status='hello')
 
