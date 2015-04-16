@@ -19,6 +19,8 @@ class IrcTwi(object):
     buffer_size = 1024
     concurrent_connection_number = 1
 
+    us_channel_users = ['us', 'rt', 'fav']
+
     def __init__(self, tokens, host = DEFAULT_HOST, port = DEFAULT_PORT):
         self.__server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__readfds = set([self.__server_sock])
@@ -81,6 +83,11 @@ class IrcTwi(object):
                                 print(' '.join(text)[1:])
 
                                 self.__api.update_status(status=' '.join(text)[1:])
+
+                        if 'NOTICE' == message[0]:
+
+                            if not message[1] in IrcTwi.us_channel_users:
+                                sock.send('')
 
         except KeyboardInterrupt:
             pass
@@ -174,16 +181,15 @@ class IrcTwi(object):
             366 RPL_ENDOFNAMES
         """
 
+        users = map(lambda x: '@'+x, IrcTwi.us_channel_users)
+
         socket.send(':irctwi 353 {user} = {channel} :{us} {user}\n'\
-                .format(user=self.__user_name, channel=channel, us='us'))
-#          print(':irctwi 353 {} = {1} :{2} {3}\n'.format('hima', channel, 'us', 'hima'))
+                .format(user=self.__user_name, channel=channel, us=' '.join(users)))
 
         socket.send(\
                 ':irctwi 366 {user} {channel} :End of NAMES list\n'\
                 .format(user=self.__user_name, channel=channel))
 #          print(':irctwi 366 {user} {} :End of NAMES list\n'.format('hima', channel))
-
-        #:irc.example.net 366 hama #test :End of NAMES list
 
 class UserStreamThread(threading.Thread):
     """ receive userstream data and post to irc"""
@@ -197,13 +203,17 @@ class UserStreamThread(threading.Thread):
 #         self.stream.close()
 
 class UserStreamListener(tweepy.StreamListener):
-    """ stream listener """
+    """ stream listener
+
+    """
 
     CONTINURE_FLAG = True
 
     def __init__(self, socket):
         tweepy.StreamListener.__init__(self)
         self.__socket = socket
+
+
 
     def on_status(self, status):
 #          print(status.text)#.decode('utf-8')
