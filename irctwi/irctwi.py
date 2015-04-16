@@ -207,22 +207,29 @@ class UserStreamListener(tweepy.StreamListener):
 
     def on_status(self, status):
 #          print(status.text)#.decode('utf-8')
+        """
+        ひま(himaaatti)
+        hello world.
+        ------------------
+        """
+
         #TODO: user can change print format
         title = '{name}({screen_name})'\
                 .format(screen_name=status.author.screen_name,\
                 name=status.author.name.encode('utf-8'))
 
-        text = '{text}'\
-                .format(name=status.author.name.encode('utf-8'), \
-                screen_name=status.author.screen_name, text=status.text.encode('utf-8'))
+#         text = '{text}'\
+#                 .format(text=status.text.encode('utf-8'))
 
         self.__socket.send(':{us}!{us}@{host} PRIVMSG #{channel} :{title}\n'\
                 .format(us='us', host='localhost', channel='timeline', \
                 title=title))
 
-        self.__socket.send(':{us}!{us}@{host} PRIVMSG #{channel} :{text}\n'\
-                .format(us='us', host='localhost', channel='timeline', \
-                text=text))
+
+        for line in status.text.split('\n'):
+            self.__socket.send(':{us}!{us}@{host} PRIVMSG #{channel} :{text}\n'\
+                    .format(us='us', host='localhost', channel='timeline', \
+                    text=line.encode('utf-8')))
 
         bar = '-------------------'
         self.__socket.send(':{us}!{us}@{host} PRIVMSG #{channel} :{bar}\n'\
