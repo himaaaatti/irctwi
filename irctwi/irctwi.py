@@ -19,24 +19,32 @@ class IrcTwi(object):
     buffer_size = 1024
     concurrent_connection_number = 1
 
-    us_channel_users = ['us', 'rt', 'fav']
+#     us_channel_users = ['us', 'rt', 'fav']
+    channel_info = \
+            {'timeline':
+                {'users' :['us', 'rt', 'fav'], 'visible': 3, 'topic': 'userstream timeline'},
+            'notification':
+                {'users' :['bot'], 'visible': 1, 'topic': 'notification'},
+            }
 
     timeline_ids = []
     timeline_ids_size = 0
 
 
-    def __init__(self, tokens, host = DEFAULT_HOST, port = DEFAULT_PORT, number_of_save_tweet = 1000):
+    def __init__(self, tokens, host = DEFAULT_HOST, port = DEFAULT_PORT,
+            number_of_save_tweet = 1000):
         self.__server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__readfds = set([self.__server_sock])
 
         self.__host = host
         self.__port = port
 
-        self.__channel_info = [{'name': 'timeline', 'visible': '3', 'topic': 'timeline'},
-                            {'name': 'notification', 'visible': '1', 'topic': 'notification'}]
+#         self.__channel_info = {'timeline': [3, 'userstream timeline'],
+#                     'notification': [1, 'notification']}
+#         self.__channel_info = [{'name': 'timeline', 'visible': '3', 'topic': 'timeline'},
+#                             {'name': 'notification', 'visible': '1', 'topic': 'notification'}]
 
         IrcTwi.timeline_ids = [0 for i in range(number_of_save_tweet)]
-
 
         self.__user_name = ''
         self.__streams = []
@@ -84,9 +92,16 @@ class IrcTwi(object):
                             print('LIST')
 
                         if 'JOIN' == message[0]:
+                            channel = message[1][1:]
+
+                            if not channel in IrcTwi.channel_info.keys():
+                                self.__send_message(sock,
+                                        self.__create_responce_head(403) + channel + ' :No suck channel')
+                                break
+
                             self.__confirmation(sock, message)
-                            self.__topic_response(sock, message[1])
-                            self.__name_response(sock, message[1])
+                            self.__topic_response(sock, channel)
+                            self.__name_response(sock, channel)
 
                         if 'PRIVMSG' == message[0]:
                             if '#timeline' == message[1]:
@@ -97,7 +112,7 @@ class IrcTwi(object):
 
                         if 'NOTICE' == message[0]:
 
-                            if message[1] in IrcTwi.us_channel_users and 3 == len(message):
+                            if message[1] in IrcTwi.channel_info['timeline'] and 3 == len(message):
 #                                 print(message[2][1:])
                                 tweet_id = IrcTwi.get_tweet_id(int(message[2][1:]))
                                 print(message[2][1:], tweet_id)
@@ -183,12 +198,15 @@ class IrcTwi(object):
             323 RPL_LISTEND
         """
 
-        for info in self.__channel_info:
-            socket.send(':irctwi 322 {user} #{channel} {visible} :{topic}\n'\
-                    .format(user = self.__user_name, channel = info['name'], \
-                    visible = info['visible'], topic = info['topic']))
+        for channel, val in IrcTwi.channel_info.iteritems():
+            self.__send_message(socket, self.__create_responce_head(322) + \
+                    '#{channel} {visible} :{topic}'\
+                    .format(channel = channel, visible = str(val['visible']), topic = val['topic']))
 
-# socket.send(':irctwi 322 {user} #timeline 1 :user stream\n'.format(user = self.__user_name))
+#             socket.send(':irctwi 322 {user} #{channel} {visible} :{topic}\n'\
+#                     .format(user = self.__user_name, channel = info['name'], \
+#                     visible = info['visible'], topic = info['topic']))
+
         socket.send(':irctwi 323 {user} :End of LIST\n'.format(user = self.__user_name))
 
     def __topic_response(self, socket, channel):
@@ -196,8 +214,14 @@ class IrcTwi(object):
             332 RPL_TOPIC
         """
 
-        socket.send(':irctwi 332 {user} {channel} :user stream\n'\
-                .format(user = self.__user_name, channel = channel))
+#         socket.send(self.__create_responce_head(332) + '{channel} :{topic}')
+
+        info = IrcTwi.channel_info[channel]
+        self.__send_message(socket, self.__create_responce_head(332) + \
+                '{channel} :{topic}'.format(channel = channel, topic = info['topic']))
+
+#         socket.send(':irctwi 332 {user} {channel} :user stream\n'\
+#                 .format(user = self.__user_name, channel = channel))
 
     def __name_response(self, socket, channel):
         """
@@ -205,14 +229,27 @@ class IrcTwi(object):
             366 RPL_ENDOFNAMES
         """
 
-        users = map(lambda x: '@'+x, IrcTwi.us_channel_users)
+        users = map(lambda x: '@'+x, IrcTwi.channel_info[channel])
+        users.append(self.__user_name)
 
-        socket.send(':irctwi 353 {user} = {channel} :{us} {user}\n'\
-                .format(user = self.__user_name, channel = channel, us = ' '.join(users)))
+        self.__send_message(socket,
+                self.__create_responce_head(353) + '= {channel} :{user}'\
+                        .format(channel = channel, user = ' '.join(users)))
+#         socket.send(':irctwi 353 {user} = {channel} :{us} {user}\n'\
+#                 .format(user = self.__user_name, channel = channel, us = ' '.join(users)))
 
-        socket.send(\
-                ':irctwi 366 {user} {channel} :End of NAMES list\n'\
-                .format(user = self.__user_name, channel = channel))
+        self.__send_message(socket,
+                self.__create_responce_head(366) + \
+                        '{channel} :End of NAMES list'.format(channel = channel))
+#         socket.send(\
+#                 ':irctwi 366 {user} {channel} :End of NAMES list\n'\
+#                 .format(user = self.__user_name, channel = channel))
+
+    def __create_responce_head(self, response_number):
+        return ':irctwi ' + str(response_number) + ' ' + self.__user_name + ' '
+
+    def __send_message(self, socket,  message):
+        socket.send(message + '\n')
 
     @classmethod
     def save_tweet(cls, tweet_id):
@@ -291,7 +328,6 @@ class UserStreamListener(tweepy.StreamListener):
 
     def __get_message(self, user, host):
         return ':{user}!{user}@{host} '.format(user = user, host = host)
-
 
 if __name__ == '__main__':
 
