@@ -21,9 +21,9 @@ class IrcTwi(object):
 
 #     us_channel_users = ['us', 'rt', 'fav']
     channel_info = \
-            {'timeline':
+            {'#timeline':
                 {'users' :['us', 'rt', 'fav'], 'visible': 3, 'topic': 'userstream timeline'},
-            'notification':
+            '#notification':
                 {'users' :['bot'], 'visible': 1, 'topic': 'notification'},
             }
 
@@ -92,11 +92,11 @@ class IrcTwi(object):
                             print('LIST')
 
                         if 'JOIN' == message[0]:
-                            channel = message[1][1:]
+                            channel = message[1]
 
                             if not channel in IrcTwi.channel_info.keys():
                                 self.__send_message(sock,
-                                        self.__create_responce_head(403) + '#' + channel + ' :No suck channel')
+                                        self.__create_responce_head(403) + channel + ' :No suck channel')
                                 break
 
                             self.__confirmation(sock, message)
@@ -112,7 +112,7 @@ class IrcTwi(object):
 
                         if 'NOTICE' == message[0]:
 
-                            if message[1] in IrcTwi.channel_info['timeline'] and 3 == len(message):
+                            if message[1] in IrcTwi.channel_info['#timeline'] and 3 == len(message):
 #                                 print(message[2][1:])
                                 tweet_id = IrcTwi.get_tweet_id(int(message[2][1:]))
                                 print(message[2][1:], tweet_id)
@@ -199,7 +199,7 @@ class IrcTwi(object):
 
         for channel, val in IrcTwi.channel_info.iteritems():
             self.__send_message(socket, self.__create_responce_head(322) + \
-                    '#{channel} {visible} :{topic}'\
+                    '{channel} {visible} :{topic}'\
                     .format(channel = channel, visible = str(val['visible']), topic = val['topic']))
 
 #             socket.send(':irctwi 322 {user} #{channel} {visible} :{topic}\n'\
@@ -217,7 +217,7 @@ class IrcTwi(object):
 
         info = IrcTwi.channel_info[channel]
         self.__send_message(socket, self.__create_responce_head(332) + \
-                '#{channel} :{topic}'.format(channel = channel, topic = info['topic']))
+                '{channel} :{topic}'.format(channel = channel, topic = info['topic']))
 
 #         socket.send(':irctwi 332 {user} {channel} :user stream\n'\
 #                 .format(user = self.__user_name, channel = channel))
@@ -228,12 +228,12 @@ class IrcTwi(object):
             366 RPL_ENDOFNAMES
         """
 
-        users = map(lambda x: '@'+x, IrcTwi.channel_info[channel])
+        users = map(lambda x: '@'+x, IrcTwi.channel_info[channel]['users'])
         users.append(self.__user_name)
         print(users)
 
         self.__send_message(socket,
-                self.__create_responce_head(353) + '= #{channel} :{user}'\
+                self.__create_responce_head(353) + '= {channel} :{user}'\
                         .format(channel = channel, user = ' '.join(users)))
 #         socket.send(':irctwi 353 {user} = {channel} :{us} {user}\n'\
 #                 .format(user = self.__user_name, channel = channel, us = ' '.join(users)))
@@ -242,7 +242,7 @@ class IrcTwi(object):
 #                 self.__create_responce_head(366) + \
 #                         '{channel} :End of NAMES list'.format(channel = channel))
         socket.send(\
-                ':irctwi 366 {user} #{channel} :End of NAMES list\n'\
+                ':irctwi 366 {user} {channel} :End of NAMES list\n'\
                 .format(user = self.__user_name, channel = channel))
 
     def __create_responce_head(self, response_number):
