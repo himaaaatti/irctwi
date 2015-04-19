@@ -4,7 +4,9 @@
 import socket
 import select
 import string
+import datetime
 import ConfigParser
+
 
 import threading
 import tweepy
@@ -57,8 +59,12 @@ class IrcTwi(object):
 
         self.__api = tweepy.API(self.__auth)
 
+
+
     def run(self):
         """setup and main loop"""
+
+        self.__server_created_at = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 
         self.__server_sock.bind((self.__host, self.__port))
         self.__server_sock.listen(IrcTwi.concurrent_connection_number)
@@ -84,7 +90,8 @@ class IrcTwi(object):
                         print(message)
 
                         if 'PING' == message[0]:
-                            sock.send('PONG {host}\n'.format(host = message[1]))
+#                             sock.send('PONG {host}\n'.format(host = message[1]))
+                            self.__send_message(sock, 'PONG ' + message[1])
                             print('PONG')
 
                         if 'LIST' == message[0]:
@@ -170,18 +177,21 @@ class IrcTwi(object):
 
         print(message)
         # 001 RPL_WELCOME
-        connection.send(\
-                ':irctwi 001 {user} :Wellcome irc and twitter gateway server!\n'\
-                    .format(user = self.__user_name))
+        self.__send_message(connection,
+                self.__create_responce_head(001) + ':Wellcome irc and twitter gateway server!')
+
         # 002 RPL_YOURHOST
-        connection.send(':irctwi 002 {user} :Your host is\n'.format(user = self.__user_name))
-#       connection.send(':irctwi 002 ' + nick + ':Your host is ' + server_name + 'running version ' + ver)
+        self.__send_message(connection,
+                self.__create_responce_head(002) + ':Yout host is ')
+
         # 003 RPL_CREATED
-        connection.send(':irctwi 003 {user} :This server was created\n'.format(user = self.__user_name))
-#         connection.send(':irctwi 003 ' + nick + ':This server was created ' + date)
+        self.__send_message(connection,
+                self.__create_responce_head(003) + \
+                        ':This server was created at ' + self.__server_created_at)
+
         # 004 RPL_MYINOF
-        connection.send(':irctwi 004 {user} :server_name\n'.format(user = self.__user_name))
-#         connection.send(':irctwi 004 ' + nick + ':' + server_name + ' ' +)
+        self.__send_message(connection,
+                self.__create_responce_head(004) + ':')
 
     def __confirmation(self, socket, message):
         """ """
@@ -246,7 +256,7 @@ class IrcTwi(object):
                 .format(user = self.__user_name, channel = channel))
 
     def __create_responce_head(self, response_number):
-        return ':irctwi ' + str(response_number) + ' ' + self.__user_name + ' '
+        return ':irctwi ' + str(format(response_number, '03d')) + ' ' + self.__user_name + ' '
 
     def __send_message(self, socket,  message):
         socket.send(message + '\n')
@@ -330,7 +340,6 @@ class UserStreamListener(tweepy.StreamListener):
         return ':{user}!{user}@{host} '.format(user = user, host = host)
 
 if __name__ == '__main__':
-
     config = ConfigParser.ConfigParser()
     config.read('config')
     tokens = {}
@@ -342,3 +351,4 @@ if __name__ == '__main__':
 
     irctwi = IrcTwi(tokens = tokens, number_of_save_tweet = 10)
     irctwi.run()
+
