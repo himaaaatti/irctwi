@@ -7,10 +7,8 @@ import string
 import datetime
 import ConfigParser
 
-
 import threading
 import tweepy
-
 
 class IrcTwi(object):
     """irc to twitter gateway server"""
@@ -32,7 +30,6 @@ class IrcTwi(object):
     timeline_ids = []
     timeline_ids_size = 0
 
-
     def __init__(self, tokens, host = DEFAULT_HOST, port = DEFAULT_PORT,
             number_of_save_tweet = 1000):
         self.__server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,11 +37,6 @@ class IrcTwi(object):
 
         self.__host = host
         self.__port = port
-
-#         self.__channel_info = {'timeline': [3, 'userstream timeline'],
-#                     'notification': [1, 'notification']}
-#         self.__channel_info = [{'name': 'timeline', 'visible': '3', 'topic': 'timeline'},
-#                             {'name': 'notification', 'visible': '1', 'topic': 'notification'}]
 
         IrcTwi.timeline_ids = [0 for i in range(number_of_save_tweet)]
 
@@ -58,8 +50,6 @@ class IrcTwi(object):
                 tokens['access_token'], tokens['access_token_secret'])
 
         self.__api = tweepy.API(self.__auth)
-
-
 
     def run(self):
         """setup and main loop"""
@@ -90,7 +80,6 @@ class IrcTwi(object):
                         print(message)
 
                         if 'PING' == message[0]:
-#                             sock.send('PONG {host}\n'.format(host = message[1]))
                             self.__send_message(sock, 'PONG ' + message[1])
                             print('PONG')
 
@@ -160,7 +149,6 @@ class IrcTwi(object):
         if message[0] != 'NICK':
             raise NotImplementedError
 
-#          print(message)
         user_index = 0
         if len(message) > 3:
             user = message[3]
@@ -196,7 +184,7 @@ class IrcTwi(object):
     def __confirmation(self, socket, message):
         """ """
 
-        socket.send(':{user}!{user}@{host} {message0} :{message1}\n'\
+        self.__send_message(socket, ':{user}!{user}@{host} {message0} :{message1}'\
                 .format(user = self.__user_name, host = 'localhost',\
                 message0 = message[0], message1 = message[1]))
 
@@ -212,10 +200,6 @@ class IrcTwi(object):
                     '{channel} {visible} :{topic}'\
                     .format(channel = channel, visible = str(val['visible']), topic = val['topic']))
 
-#             socket.send(':irctwi 322 {user} #{channel} {visible} :{topic}\n'\
-#                     .format(user = self.__user_name, channel = info['name'], \
-#                     visible = info['visible'], topic = info['topic']))
-
         socket.send(':irctwi 323 {user} :End of LIST\n'.format(user = self.__user_name))
 
     def __topic_response(self, socket, channel):
@@ -223,14 +207,9 @@ class IrcTwi(object):
             332 RPL_TOPIC
         """
 
-#         socket.send(self.__create_responce_head(332) + '{channel} :{topic}')
-
         info = IrcTwi.channel_info[channel]
         self.__send_message(socket, self.__create_responce_head(332) + \
                 '{channel} :{topic}'.format(channel = channel, topic = info['topic']))
-
-#         socket.send(':irctwi 332 {user} {channel} :user stream\n'\
-#                 .format(user = self.__user_name, channel = channel))
 
     def __name_response(self, socket, channel):
         """
@@ -245,15 +224,10 @@ class IrcTwi(object):
         self.__send_message(socket,
                 self.__create_responce_head(353) + '= {channel} :{user}'\
                         .format(channel = channel, user = ' '.join(users)))
-#         socket.send(':irctwi 353 {user} = {channel} :{us} {user}\n'\
-#                 .format(user = self.__user_name, channel = channel, us = ' '.join(users)))
 
-#         self.__send_message(socket,
-#                 self.__create_responce_head(366) + \
-#                         '{channel} :End of NAMES list'.format(channel = channel))
-        socket.send(\
-                ':irctwi 366 {user} {channel} :End of NAMES list\n'\
-                .format(user = self.__user_name, channel = channel))
+        self.__send_message(socket,
+                self.__create_responce_head(366) + \
+                        '{channel} :End of NAMES list'.format(channel = channel))
 
     def __create_responce_head(self, response_number):
         return ':irctwi ' + str(format(response_number, '03d')) + ' ' + self.__user_name + ' '
