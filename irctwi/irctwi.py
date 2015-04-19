@@ -136,7 +136,6 @@ class IrcTwi(object):
             for sock in self.__readfds:
                 sock.close()
 
-
     def __login(self, connection):
         """
         receive USER and NICK command and replie 001 to 004.
@@ -231,6 +230,7 @@ class IrcTwi(object):
 
         users = map(lambda x: '@'+x, IrcTwi.channel_info[channel])
         users.append(self.__user_name)
+        print(users)
 
         self.__send_message(socket,
                 self.__create_responce_head(353) + '= {channel} :{user}'\
@@ -238,12 +238,12 @@ class IrcTwi(object):
 #         socket.send(':irctwi 353 {user} = {channel} :{us} {user}\n'\
 #                 .format(user = self.__user_name, channel = channel, us = ' '.join(users)))
 
-        self.__send_message(socket,
-                self.__create_responce_head(366) + \
-                        '{channel} :End of NAMES list'.format(channel = channel))
-#         socket.send(\
-#                 ':irctwi 366 {user} {channel} :End of NAMES list\n'\
-#                 .format(user = self.__user_name, channel = channel))
+#         self.__send_message(socket,
+#                 self.__create_responce_head(366) + \
+#                         '{channel} :End of NAMES list'.format(channel = channel))
+        socket.send(\
+                ':irctwi 366 {user} {channel} :End of NAMES list\n'\
+                .format(user = self.__user_name, channel = channel))
 
     def __create_responce_head(self, response_number):
         return ':irctwi ' + str(response_number) + ' ' + self.__user_name + ' '
