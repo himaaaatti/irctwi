@@ -5,9 +5,10 @@ import socket
 import select
 import string
 import datetime
+from logging import getLogger
+import threading
 import ConfigParser
 
-import threading
 import tweepy
 
 class IrcTwi(object):
@@ -32,6 +33,10 @@ class IrcTwi(object):
 
     def __init__(self, tokens, host = DEFAULT_HOST, port = DEFAULT_PORT,
             number_of_save_tweet = 1000):
+
+        self.logger = getLogger(__name__)
+        self.logger.info('start server')
+
         self.__server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__readfds = set([self.__server_sock])
 
@@ -50,6 +55,7 @@ class IrcTwi(object):
                 tokens['access_token'], tokens['access_token_secret'])
 
         self.__api = tweepy.API(self.__auth)
+
 
     def run(self):
         """setup and main loop"""
@@ -77,7 +83,7 @@ class IrcTwi(object):
 
                     else:
                         message = string.split(sock.recv(1024))
-                        print(message)
+
 
                         if 'PING' == message[0]:
                             self.__send_message(sock, 'PONG ' + message[1])
@@ -120,7 +126,6 @@ class IrcTwi(object):
                                     self.__api.retweet(tweet_id)
 
                                 elif 'fav' == message[1]:
-                                    #FIXME: below line
                                     self.__api.create_favorite(tweet_id)
 
         except KeyboardInterrupt:
@@ -163,23 +168,28 @@ class IrcTwi(object):
         if 'USER' != message[user_index]:
             raise NotImplementedError
 
-        print(message)
+        self.logger.info('login user: ' + self.__user_name)
+
         # 001 RPL_WELCOME
         self.__send_message(connection,
                 self.__create_responce_head(001) + ':Wellcome irc and twitter gateway server!')
+        self.logger.debug('sent 001 RPL_WELCOME')
 
         # 002 RPL_YOURHOST
         self.__send_message(connection,
                 self.__create_responce_head(002) + ':Yout host is ')
+        self.logger.debug('sent 002 RPL_YOURHOST')
 
         # 003 RPL_CREATED
         self.__send_message(connection,
                 self.__create_responce_head(003) + \
                         ':This server was created at ' + self.__server_created_at)
+        self.logger.debug('sent 003 RPL_CREATED')
 
         # 004 RPL_MYINOF
         self.__send_message(connection,
                 self.__create_responce_head(004) + ':')
+        self.logger.debug('sent 004 RPL_MYINFO')
 
     def __confirmation(self, socket, message):
         """ """
@@ -187,6 +197,7 @@ class IrcTwi(object):
         self.__send_message(socket, ':{user}!{user}@{host} {message0} :{message1}'\
                 .format(user = self.__user_name, host = 'localhost',\
                 message0 = message[0], message1 = message[1]))
+        self.logger.debug('sent confirmation')
 
 
     def __list_response(self, socket):
@@ -201,6 +212,8 @@ class IrcTwi(object):
                     .format(channel = channel, visible = str(val['visible']), topic = val['topic']))
 
         socket.send(':irctwi 323 {user} :End of LIST\n'.format(user = self.__user_name))
+        self.logger.debug('send 322 RPL_LIST')
+        self.logger.debug('send 323 RPL_LISTEND')
 
     def __topic_response(self, socket, channel):
         """
@@ -210,6 +223,7 @@ class IrcTwi(object):
         info = IrcTwi.channel_info[channel]
         self.__send_message(socket, self.__create_responce_head(332) + \
                 '{channel} :{topic}'.format(channel = channel, topic = info['topic']))
+        self.logger.debug('sent 332 RPL_TOPIC')
 
     def __name_response(self, socket, channel):
         """
@@ -224,10 +238,13 @@ class IrcTwi(object):
         self.__send_message(socket,
                 self.__create_responce_head(353) + '= {channel} :{user}'\
                         .format(channel = channel, user = ' '.join(users)))
+        self.logger.debug('sent 353 RPPL_NAMREPLY')
 
         self.__send_message(socket,
                 self.__create_responce_head(366) + \
                         '{channel} :End of NAMES list'.format(channel = channel))
+
+        self.logger.debug('send 356 RPL_ENDOFNAMES')
 
     def __create_responce_head(self, response_number):
         return ':irctwi ' + str(format(response_number, '03d')) + ' ' + self.__user_name + ' '
@@ -314,9 +331,27 @@ class UserStreamListener(tweepy.StreamListener):
         return ':{user}!{user}@{host} '.format(user = user, host = host)
 
 if __name__ == '__main__':
+    import logging
+    import logging.handlers
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    rotating_file_handler = logging.handlers.RotatingFileHandler(
+            filename = 'irctwi.log',
+            maxBytes = 1024,
+            backupCount = 5
+            )
+    rotating_file_handler.setLevel(logging.DEBUG)
+    rotating_file_handler.setFormatter(formatter)
+
+    logger.addHandler(rotating_file_handler)
+
     config = ConfigParser.ConfigParser()
     config.read('config')
     tokens = {}
+
+
     tokens['consumer_key'] = config.get('tokens', 'consumer_key')
     tokens['consumer_secret'] = config.get('tokens', 'consumer_secret')
     tokens['access_token'] = config.get('tokens', 'access_token')
