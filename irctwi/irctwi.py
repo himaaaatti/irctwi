@@ -96,7 +96,7 @@ class IrcTwi(object):
 
                             if not channel in IrcTwi.channel_info.keys():
                                 self.__send_message(sock,
-                                        self.__create_responce_head(403) + channel + ' :No suck channel')
+                                        self.__create_responce_head(403) + '#' + channel + ' :No suck channel')
                                 break
 
                             self.__confirmation(sock, message)
@@ -217,7 +217,7 @@ class IrcTwi(object):
 
         info = IrcTwi.channel_info[channel]
         self.__send_message(socket, self.__create_responce_head(332) + \
-                '{channel} :{topic}'.format(channel = channel, topic = info['topic']))
+                '#{channel} :{topic}'.format(channel = channel, topic = info['topic']))
 
 #         socket.send(':irctwi 332 {user} {channel} :user stream\n'\
 #                 .format(user = self.__user_name, channel = channel))
@@ -233,7 +233,7 @@ class IrcTwi(object):
         print(users)
 
         self.__send_message(socket,
-                self.__create_responce_head(353) + '= {channel} :{user}'\
+                self.__create_responce_head(353) + '= #{channel} :{user}'\
                         .format(channel = channel, user = ' '.join(users)))
 #         socket.send(':irctwi 353 {user} = {channel} :{us} {user}\n'\
 #                 .format(user = self.__user_name, channel = channel, us = ' '.join(users)))
@@ -242,7 +242,7 @@ class IrcTwi(object):
 #                 self.__create_responce_head(366) + \
 #                         '{channel} :End of NAMES list'.format(channel = channel))
         socket.send(\
-                ':irctwi 366 {user} {channel} :End of NAMES list\n'\
+                ':irctwi 366 {user} #{channel} :End of NAMES list\n'\
                 .format(user = self.__user_name, channel = channel))
 
     def __create_responce_head(self, response_number):
