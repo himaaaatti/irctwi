@@ -8,6 +8,8 @@ import datetime
 from logging import getLogger
 import threading
 import ConfigParser
+import sys
+import traceback
 
 import tweepy
 
@@ -83,15 +85,19 @@ class IrcTwi(object):
 
                     else:
                         message = string.split(sock.recv(1024))
+                        peer = sock.getpeername()
+                        self.logger.info('from {address}, {port}: {message}'\
+                                .format(address = peer[0], port = (str(peer[1])), \
+                                message = ' '.join(message)))
 
 
                         if 'PING' == message[0]:
+                            self.logger.debug('received PING command from ' + message[1])
                             self.__send_message(sock, 'PONG ' + message[1])
-                            print('PONG')
 
                         if 'LIST' == message[0]:
+                            self.logger.debug('received LIST command')
                             self.__list_response(sock)
-                            print('LIST')
 
                         if 'JOIN' == message[0]:
                             channel = message[1]
@@ -108,7 +114,7 @@ class IrcTwi(object):
                         if 'PRIVMSG' == message[0]:
                             if '#timeline' == message[1]:
                                 text = message[2:]
-                                print(' '.join(text)[1:])
+#                                 print(' '.join(text)[1:])
 
                                 self.__api.update_status(status = ' '.join(text)[1:])
 
@@ -117,9 +123,10 @@ class IrcTwi(object):
                             if message[1] in IrcTwi.channel_info['#timeline'] and 3 == len(message):
 #                                 print(message[2][1:])
                                 tweet_id = IrcTwi.get_tweet_id(int(message[2][1:]))
-                                print(message[2][1:], tweet_id)
+#                                 print(message[2][1:], tweet_id)
                                 if not tweet_id:
-                                    print('tweet_id is not correct')
+                                    self.logger.warn('tweet_id is not correct') #FIXME
+#                                     print('tweet_id is not correct')
                                     continue
 
                                 if 'rt' == message[1]:
@@ -233,7 +240,7 @@ class IrcTwi(object):
 
         users = map(lambda x: '@'+x, IrcTwi.channel_info[channel]['users'])
         users.append(self.__user_name)
-        print(users)
+#         print(users)
 
         self.__send_message(socket,
                 self.__create_responce_head(353) + '= {channel} :{user}'\
@@ -331,6 +338,17 @@ class UserStreamListener(tweepy.StreamListener):
         return ':{user}!{user}@{host} '.format(user = user, host = host)
 
 if __name__ == '__main__':
+    config = ConfigParser.ConfigParser()
+    config.read('config')
+    tokens = {}
+
+    log_file_path = config.get('log', 'directory_path')
+
+    tokens['consumer_key'] = config.get('tokens', 'consumer_key')
+    tokens['consumer_secret'] = config.get('tokens', 'consumer_secret')
+    tokens['access_token'] = config.get('tokens', 'access_token')
+    tokens['access_token_secret'] = config.get('tokens', 'access_token_secret')
+
     import logging
     import logging.handlers
     logger = logging.getLogger(__name__)
@@ -339,7 +357,7 @@ if __name__ == '__main__':
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     rotating_file_handler = logging.handlers.RotatingFileHandler(
             filename = 'irctwi.log',
-            maxBytes = 1024,
+            maxBytes = 1024 * 1024,
             backupCount = 5
             )
     rotating_file_handler.setLevel(logging.DEBUG)
@@ -347,17 +365,18 @@ if __name__ == '__main__':
 
     logger.addHandler(rotating_file_handler)
 
-    config = ConfigParser.ConfigParser()
-    config.read('config')
-    tokens = {}
-
-
-    tokens['consumer_key'] = config.get('tokens', 'consumer_key')
-    tokens['consumer_secret'] = config.get('tokens', 'consumer_secret')
-    tokens['access_token'] = config.get('tokens', 'access_token')
-    tokens['access_token_secret'] = config.get('tokens', 'access_token_secret')
-    print(tokens)
+    for name, val in tokens.iteritems():
+        logger.debug(name + ' : ' + val)
 
     irctwi = IrcTwi(tokens = tokens, number_of_save_tweet = 10)
-    irctwi.run()
-
+    try:
+        irctwi.run()
+    except:
+#         print(sys.exc_info())
+#         error_info = sys.exc_info()
+#         logger.critical(error_info[1])
+#         print(help(error_info[2]))
+#         for line in error_info[2].format_exc().split('\n'):
+#             logger.critical(line)
+#         logger.critical(error_info[2])
+        logger.critical(traceback.format_exc())

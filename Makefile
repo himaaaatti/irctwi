@@ -7,3 +7,6 @@ test:
 .PHONY : run
 run:
 	python irctwi/irctwi.py
+
+clean:
+	rm -f irctwi.log*
