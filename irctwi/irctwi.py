@@ -44,6 +44,7 @@ class IrcTwi(object):
 
         self.__host = host
         self.__port = port
+        IrcTwi.timeline_ids_size = number_of_save_tweet
 
         IrcTwi.timeline_ids = [0 for i in range(number_of_save_tweet)]
 
@@ -114,29 +115,33 @@ class IrcTwi(object):
                         if 'PRIVMSG' == message[0]:
                             if '#timeline' == message[1]:
                                 text = message[2:]
-#                                 print(' '.join(text)[1:])
 
                                 self.__api.update_status(status = ' '.join(text)[1:])
+                                self.logger.info('tweet text: ' + ' '.join(text)[1:])
 
                         if 'NOTICE' == message[0]:
 
-                            if message[1] in IrcTwi.channel_info['#timeline'] and 3 == len(message):
-#                                 print(message[2][1:])
+                            if message[1] in IrcTwi.channel_info['#timeline']['users'] and 3 == len(message):
                                 tweet_id = IrcTwi.get_tweet_id(int(message[2][1:]))
-#                                 print(message[2][1:], tweet_id)
                                 if not tweet_id:
                                     self.logger.warn('tweet_id is not correct') #FIXME
-#                                     print('tweet_id is not correct')
                                     continue
 
                                 if 'rt' == message[1]:
+                                    #TODO: loggin response data
                                     self.__api.retweet(tweet_id)
+                                    self.logger.info('retweet id is : ' + str(tweet_id))
 
                                 elif 'fav' == message[1]:
+                                    #TODO: loggin response data
                                     self.__api.create_favorite(tweet_id)
+                                    self.logger.info('favorite id is : ' + str(tweet_id))
 
         except KeyboardInterrupt:
             pass
+        except:
+            self.logger.critical(traceback.format_exc())
+            raise
         finally:
             UserStreamThread.continue_flag = False
             for stream in self.__streams:
@@ -265,6 +270,7 @@ class IrcTwi(object):
         index = cls.timeline_ids_size % len(cls.timeline_ids)
         cls.timeline_ids[index] = tweet_id
         cls.timeline_ids_size  += 1
+        getLogger(__name__).debug('in save_tweet: index is ' + str(index))
         return index
 
     @classmethod
@@ -282,12 +288,18 @@ class UserStreamThread(threading.Thread):
 
     def __init__(self, socket, auth):
         threading.Thread.__init__(self)
+        self.logger = getLogger(__name__)
 
         self.stream = tweepy.Stream(auth, UserStreamListener(socket))
 
     def run(self):
-        while UserStreamThread.continue_flag:
-            self.stream.userstream()
+        try:
+            while UserStreamThread.continue_flag:
+                self.logger.info('start userstream')
+                self.stream.userstream()
+        except:
+            self.logger.critical(traceback.format_exc())
+            raise
 
 class UserStreamListener(tweepy.StreamListener):
     """ stream listener
@@ -368,7 +380,7 @@ if __name__ == '__main__':
     for name, val in tokens.iteritems():
         logger.debug(name + ' : ' + val)
 
-    irctwi = IrcTwi(tokens = tokens, number_of_save_tweet = 10)
+    irctwi = IrcTwi(tokens = tokens)
     try:
         irctwi.run()
     except:
