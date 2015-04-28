@@ -25,7 +25,7 @@ class IrcTwi(object):
 #     us_channel_users = ['us', 'rt', 'fav']
     channel_info = \
             {'#timeline':
-                {'users' :['us', 'rt', 'fav'], 'visible': 3, 'topic': 'userstream timeline'},
+                {'users' :['us', 'rt', 'fav', 'rp'], 'visible': 3, 'topic': 'userstream timeline'},
             '#notification':
                 {'users' :['bot'], 'visible': 1, 'topic': 'notification'},
             }
@@ -80,9 +80,7 @@ class IrcTwi(object):
 
                         self.__readfds.add(connection)
 
-                        us_thread = UserStreamThread(connection, self.__auth)
-                        us_thread.start()
-                        self.__streams.append(us_thread)
+                        self.__streams.append(connection)
 
                     else:
                         message = string.split(sock.recv(1024))
@@ -112,6 +110,16 @@ class IrcTwi(object):
                             self.__topic_response(sock, channel)
                             self.__name_response(sock, channel)
 
+                            if '#timeline' == channel:
+                                us_thread = UserStreamThread(sock, self.__auth)
+                                us_thread.start()
+                                self.logger.info('start user stream thread')
+
+                        if 'PART' == message[0]:
+                            self.logger.info('received PART command')
+                            UserStreamThread.continue_flag = False
+
+
                         if 'PRIVMSG' == message[0]:
                             if '#timeline' == message[1]:
                                 text = message[2:]
@@ -137,6 +145,9 @@ class IrcTwi(object):
                                     self.__api.create_favorite(tweet_id)
                                     self.logger.info('favorite id is : ' + str(tweet_id))
 
+                                elif 'rp' == message[1]:
+                                    self.logger.info('reply to :(not implement)')
+
         except KeyboardInterrupt:
             pass
         except:
@@ -146,8 +157,8 @@ class IrcTwi(object):
             UserStreamThread.continue_flag = False
             for stream in self.__streams:
                 stream.join()
-            for sock in self.__readfds:
-                sock.close()
+#             for sock in self.__readfds:
+#                 sock.close()
 
     def __login(self, connection):
         """
@@ -314,6 +325,8 @@ class UserStreamListener(tweepy.StreamListener):
 
         self.__timeline_channel = 'timeline'
 
+        self.logger = getLogger(__name__)
+
     def on_status(self, status):
         """
         ひま(himaaatti)
@@ -321,6 +334,7 @@ class UserStreamListener(tweepy.StreamListener):
         ------------------
         """
         save_number = IrcTwi.save_tweet(status.id)
+        self.logger.debug('on_status:')
 
         #TODO: user can change print format
         title = '[{save_number}] {name}({screen_name})'\
@@ -341,6 +355,7 @@ class UserStreamListener(tweepy.StreamListener):
 
     def on_event(self, status):
         """ on event"""
+        self.logger.debug('on_event: ')
         return UserStreamThread.continue_flag
 
     def __send_privmsg(self, user, host, channel, message):
