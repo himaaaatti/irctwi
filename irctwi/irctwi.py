@@ -5,11 +5,12 @@ import socket
 import select
 import string
 import datetime
-from logging import getLogger
 import threading
-import ConfigParser
-import sys
 import traceback
+import sys
+import os
+import ConfigParser
+from logging import getLogger
 
 import tweepy
 
@@ -370,6 +371,8 @@ if __name__ == '__main__':
     tokens = {}
 
     log_file_path = config.get('log', 'directory_path')
+    if not os.path.exists(log_file_path):
+        os.makedirs(log_file_path)
 
     tokens['consumer_key'] = config.get('tokens', 'consumer_key')
     tokens['consumer_secret'] = config.get('tokens', 'consumer_secret')
@@ -383,10 +386,11 @@ if __name__ == '__main__':
 
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     rotating_file_handler = logging.handlers.RotatingFileHandler(
-            filename = 'irctwi.log',
+            filename = log_file_path + 'irctwi.log',
             maxBytes = 1024 * 1024,
             backupCount = 5
             )
+
     rotating_file_handler.setLevel(logging.DEBUG)
     rotating_file_handler.setFormatter(formatter)
 
