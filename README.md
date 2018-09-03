@@ -12,9 +12,7 @@ https://tools.ietf.org/html/rfc2811
 
 
 ### TODO
-when server receive join command, start thread and userstream.
-And part command, stop thread and close userstream.
-
-replay
-
-channel notification
+- start thread and userstream, when the server receiver a join command.
+- part command(to stop thread and close userstream)
+- replay
+- channel notification
